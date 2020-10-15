@@ -3,12 +3,26 @@ pragma solidity ^0.6.0;
 contract Financiamento{
     address payable dono;
 	address remetente;
+	uint controlaPagamento;
+	uint qtdParcelas;
+	uint limiteDeParcelasAtrasadas;
 	uint parcelasPagas = 0;
 	uint parcelasAtrasadas = 0;
-	bool atrasado = false;
+	bool pendencia;
 	uint dataUltimoPagamento = 0;
 	uint valorParcela = 0;
+    uint valorTotalPago;
+		
+	struct Pagamento{
+	uint parcelasPagas;
+	uint dataUltimoPagamento;
+	uint valorParcela;
+	}
+	
+	Pagamento[] pagamentos;
 
+	
+	
     struct Parte{
    	 string nome;
    	 string cpf;
@@ -17,13 +31,30 @@ contract Financiamento{
     
     event TrocoEnviado(address remetente, uint troco);
     event PagamentoEnviado(address dono, uint valorParcela);
+    
+    function setAtraso()public{
+        parcelasAtrasadas++;
+        
+        if(parcelasAtrasadas >= limiteDeParcelasAtrasadas){
+            if(limiteDeParcelasAtrasadas == parcelasAtrasadas){
+                pendencia = true;
+            }else{
+                
+            }
+        }
+        
+    }
+    
+    function kill() public{
+        
+    }
+    
 
     function pagar() public payable custoParcela(valorParcela) saldoInsuficiente(valorParcela){
-
+    	
+    	
     	uint troco = msg.value - valorParcela;
     	valorParcela = valorParcela;
-    	
-    // 	uint parcela = address(this).balance;
     	dono.transfer(valorParcela);
    	    emit PagamentoEnviado(dono, valorParcela);
    	    
@@ -31,6 +62,7 @@ contract Financiamento{
         	msg.sender.transfer(troco);
         	emit TrocoEnviado(msg.sender, troco);
     	}
+    	
     	
       }
 
@@ -47,7 +79,7 @@ contract Financiamento{
     	int numeroContrato;
    	 string descricao;
    	 uint256 valorBem;
-   	 uint qtdParcelas;
+   	//  uint qtdParcelas;
    	 uint juros;
    	 uint jurosTotalEmMoeda;
    	 uint valorParcela;
@@ -60,18 +92,20 @@ contract Financiamento{
                 	string memory _descricao,
                 	uint256 _valorBem,
                 	uint _qtdParcelas,
-                	uint _juros) public {
+                	uint _juros, uint _limiteParcelas) public {
             	contratos.push(Contrato({
             	numeroContrato: _numeroContrato,
             	descricao: _descricao,
             	valorBem: _valorBem,
-            	qtdParcelas: _qtdParcelas,
+            // 	qtdParcelas: _qtdParcelas,
             	juros: _juros,
             	jurosTotalEmMoeda: (_juros * _valorBem)/100,
             	valorParcela: (_valorBem + ((_juros * _valorBem)/100))/_qtdParcelas,
             	valorTotalComJuros: _valorBem + ((_juros * _valorBem)/100),
             	inicio: now
         	}));
+        	limiteDeParcelasAtrasadas = _limiteParcelas;
+        	qtdParcelas = _qtdParcelas;
         	valorParcela = (_valorBem + ((_juros * _valorBem)/100))/_qtdParcelas;
         	dono = msg.sender;
     	}
@@ -88,7 +122,6 @@ contract Financiamento{
         	uint _valorTotalComJuros,
         	uint _inicio
         	){
-		
             	//Contrato memory ultimo = contratos[contratos.length - 1];
            	 
             	return(
@@ -96,13 +129,15 @@ contract Financiamento{
                     	contratos[0].numeroContrato,
                     	contratos[0].descricao,
                     	contratos[0].valorBem,
-                    	contratos[0].qtdParcelas,
                     	contratos[0].juros,
                     	contratos[0].jurosTotalEmMoeda,
                     	contratos[0].valorParcela,
                     	contratos[0].valorTotalComJuros,
-                    	contratos[0].inicio
+                    	contratos[0].inicio,
+                    	qtdParcelas
                 	);
+            
+                	
         	}
        	 
     	Parte[] vendedor;

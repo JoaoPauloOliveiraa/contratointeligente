@@ -1,7 +1,7 @@
 pragma solidity ^0.6.0;
 
 contract Financiamento{
-    address dono;
+    address payable dono;
 	address remetente;
 	uint parcelasPagas = 0;
 	uint parcelasAtrasadas = 0;
@@ -16,15 +16,22 @@ contract Financiamento{
     }
     
     event TrocoEnviado(address remetente, uint troco);
+    event PagamentoEnviado(address dono, uint valorParcela);
 
     function pagar() public payable custoParcela(valorParcela) saldoInsuficiente(valorParcela){
 
     	uint troco = msg.value - valorParcela;
-   	 
+    	valorParcela = valorParcela;
+    	
+    // 	uint parcela = address(this).balance;
+    	dono.transfer(valorParcela);
+   	    emit PagamentoEnviado(dono, valorParcela);
+   	    
     	if(troco > 0){
         	msg.sender.transfer(troco);
         	emit TrocoEnviado(msg.sender, troco);
     	}
+    	
       }
 
     modifier saldoInsuficiente(uint enviado){
@@ -131,7 +138,8 @@ contract Financiamento{
     	address _addressComprador
     	)
     	public {
-   	 
+    	    
+   	    require(_addressComprador != dono, "O comprador e o vendedor devem possuir endereços diferentes");
     	comprador.push(Parte({
         	id: _addressComprador,
         	nome: _nomeComprador,

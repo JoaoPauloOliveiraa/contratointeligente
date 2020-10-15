@@ -88,6 +88,7 @@ contract Financiamento{
         	uint _valorTotalComJuros,
         	uint _inicio
         	){
+		
             	//Contrato memory ultimo = contratos[contratos.length - 1];
            	 
             	return(

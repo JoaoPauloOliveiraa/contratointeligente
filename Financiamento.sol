@@ -75,8 +75,8 @@ contract Financiamento{
         	string memory _descricao,
         	uint256 _valorBem,
         	uint _qtdParcelas,
-        	uint _jurosMes,
-        	uint _jurosTotal,
+        	uint _juros,
+        	uint _jurosTotalEmMoedas,
         	uint _valorParcela,
         	uint _valorTotalComJuros,
         	uint _inicio

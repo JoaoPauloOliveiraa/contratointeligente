@@ -2,7 +2,7 @@ pragma solidity ^0.6.0;
 
 contract Financiamento{
     address payable dono;
-	address remetente;
+	address payable remetente;
 	uint controlaPagamento;
 	uint qtdParcelas;
 	uint limiteDeParcelasAtrasadas;
@@ -12,16 +12,49 @@ contract Financiamento{
 	uint dataUltimoPagamento = 0;
 	uint valorParcela = 0;
     uint valorTotalPago;
-		
+	uint devolucaoQuebraDeContrato;
+	uint devolucao;
 	struct Pagamento{
 	uint parcelasPagas;
-	uint dataUltimoPagamento;
-	uint valorParcela;
+	uint dataPagamento;
+	uint valorPago;
 	}
 	
 	Pagamento[] pagamentos;
-
 	
+    function setPagamento(uint _valorParcela) public {
+        pagamentos.push(Pagamento({
+        	parcelasPagas: parcelasPagas++,
+        	dataPagamento: now,
+        	valorPago: _valorParcela
+    	}));
+    	
+    	controlaPagamento++;
+    }
+	
+	function getPagamento() public view returns(
+        	address _remetente,
+        	uint _totalParcelasPagas,
+        	uint _dataPagamento,
+        	uint _valorPago,
+        	uint _parcelasAtrasadas,
+        	uint _valorTotalPago
+        	){
+            	//Contrato memory ultimo = contratos[contratos.length - 1];
+           	 uint i;
+            	
+            	    
+            	    for( i = 0; i > controlaPagamento-1;){
+            	    return(
+            	        remetente,
+            	        pagamentos[i].parcelasPagas,
+            	        pagamentos[i].dataPagamento,
+            	        pagamentos[i].valorPago,
+            	        parcelasAtrasadas,
+            	        valorTotalPago
+            	   );
+            	    }
+        	}
 	
     struct Parte{
    	 string nome;
@@ -31,52 +64,80 @@ contract Financiamento{
     
     event TrocoEnviado(address remetente, uint troco);
     event PagamentoEnviado(address dono, uint valorParcela);
+    event Devolucao(address remetente, uint devolucao);
     
     function setAtraso()public{
         parcelasAtrasadas++;
-        
         if(parcelasAtrasadas >= limiteDeParcelasAtrasadas){
             if(limiteDeParcelasAtrasadas == parcelasAtrasadas){
                 pendencia = true;
             }else{
-                
+                killRescisao();
             }
         }
         
     }
     
-    function kill() public{
-        
+    function killRescisao() public{
+        devolucao = valorTotalPago - ((valorTotalPago * devolucaoQuebraDeContrato)/100);
+        remetente.transfer(devolucao);
+        emit Devolucao(remetente, devolucao);
+        selfdestruct(dono);
     }
     
-
-    function pagar() public payable custoParcela(valorParcela) saldoInsuficiente(valorParcela){
-    	
-    	
+    function kill() public apenasDono(){
+        selfdestruct(dono);
+    }
+    modifier apenasDono(){
+        require(msg.sender == dono);
+        _;
+    }
+    function pagar() public payable custoParcela(valorParcela) saldoInsuficiente(valorParcela) parcelasPendentes(pendencia){
     	uint troco = msg.value - valorParcela;
     	valorParcela = valorParcela;
     	dono.transfer(valorParcela);
    	    emit PagamentoEnviado(dono, valorParcela);
-   	    
+   	    valorTotalPago = valorTotalPago + valorParcela;
     	if(troco > 0){
         	msg.sender.transfer(troco);
         	emit TrocoEnviado(msg.sender, troco);
     	}
-    	
-    	
-      }
-
+    setPagamento(valorParcela);
+    }
+    
+    function quitarPendencias() public payable custoParcela(valorParcela) saldoInsuficiente(valorParcela){
+        
+        valorParcela = valorParcela * parcelasAtrasadas;
+    	uint troco = msg.value - valorParcela;
+    	valorParcela = valorParcela;
+    	dono.transfer(valorParcela);
+   	    emit PagamentoEnviado(dono, valorParcela);
+   	    valorTotalPago = valorTotalPago + valorParcela;
+    	if(troco > 0){
+        	msg.sender.transfer(troco);
+        	emit TrocoEnviado(msg.sender, troco);
+    	}
+    setPagamento(valorParcela);
+    }
+    
+    modifier parcelasPendentes(bool _pendencia){
+    
+    require(pendencia==true, "Quite os débitos pendentes para evitar a rescisão do contrato" );
+        _;
+    }
+    
     modifier saldoInsuficiente(uint enviado){
     	require(msg.sender.balance >= enviado, "Você não possui saldo suficiente");
     	_;
     }
     
     modifier custoParcela(uint min){
+        
     	require(msg.value >= min, "Não foi possível efetuar o pagamento, o valor da parcela é maior que o valor enviado");
     	_;
     }
     struct Contrato{
-    	int numeroContrato;
+    int numeroContrato;
    	 string descricao;
    	 uint256 valorBem;
    	//  uint qtdParcelas;
@@ -92,7 +153,7 @@ contract Financiamento{
                 	string memory _descricao,
                 	uint256 _valorBem,
                 	uint _qtdParcelas,
-                	uint _juros, uint _limiteParcelas) public {
+                	uint _juros, uint _limiteParcelas, uint _devolucao) public {
             	contratos.push(Contrato({
             	numeroContrato: _numeroContrato,
             	descricao: _descricao,
@@ -104,6 +165,7 @@ contract Financiamento{
             	valorTotalComJuros: _valorBem + ((_juros * _valorBem)/100),
             	inicio: now
         	}));
+        	devolucaoQuebraDeContrato = _devolucao;
         	limiteDeParcelasAtrasadas = _limiteParcelas;
         	qtdParcelas = _qtdParcelas;
         	valorParcela = (_valorBem + ((_juros * _valorBem)/100))/_qtdParcelas;
@@ -171,7 +233,7 @@ contract Financiamento{
    	 function setComprador (
    	 string memory _nomeComprador,
     	string memory _cpfComprador,
-    	address _addressComprador
+    	address payable _addressComprador
     	)
     	public {
     	    
@@ -181,6 +243,8 @@ contract Financiamento{
         	nome: _nomeComprador,
         	cpf: _cpfComprador
     	}));
+    	
+    	remetente = _addressComprador;
     			 
     	}
     	function getComprador()
@@ -193,5 +257,6 @@ contract Financiamento{
               	comprador[0].nome,
               	comprador[0].cpf
             	);
+            
    	 }
 }
